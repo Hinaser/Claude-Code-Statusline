@@ -21,13 +21,14 @@ process.stdin.on('end', () => {
       return m + 'm' + (rs ? rs + 's' : '');
     };
 
-    // Model: 'claude-opus-4-6' -> 'Opus 4.6'
-    const mid = d.model?.id || '';
+    // Model: 'claude-opus-5[1m]' -> 'Opus5(high)', 'claude-opus-4-6' -> 'Opus4.6(high)'
+    const mid = (d.model?.id || '').replace(/\[.*?\]/g, '');
+    const effort = d.effort?.level ? '(' + d.effort.level + ')' : '';
     const modelName = (() => {
-      const m = mid.match(/claude-(\w+)-(\d+)-(\d+)/);
-      if (m) return m[1].charAt(0).toUpperCase() + m[1].slice(1) + ' ' + m[2] + '.' + m[3];
-      return d.model?.display_name || 'Unknown';
-    })();
+      const m = mid.match(/claude-([a-z]+)-(\d+)(?:-(\d+))?/i);
+      if (m) return m[1].charAt(0).toUpperCase() + m[1].slice(1) + m[2] + (m[3] ? '.' + m[3] : '');
+      return (d.model?.display_name || 'Unknown').replace(/\s*\(.*?\)/g, '').replace(/\s+/g, '');
+    })() + effort;
 
     // Context remaining % with used/total
     const ctxSize = d.context_window?.context_window_size;
@@ -38,10 +39,6 @@ process.stdin.on('end', () => {
 
     // Cost
     const cost = d.cost?.total_cost_usd;
-
-    // Lines changed
-    const added = d.cost?.total_lines_added;
-    const removed = d.cost?.total_lines_removed;
 
     // API duration
     const apiMs = d.cost?.total_api_duration_ms;
@@ -58,14 +55,13 @@ process.stdin.on('end', () => {
     let branch = '';
     const cwd = d.cwd || '';
     try {
-      branch = execSync('git rev-parse --abbrev-ref HEAD', { cwd: cwd || undefined, encoding: 'utf8', stdio: ['pipe','pipe','pipe'] }).trim();
+      branch = execSync('git --no-optional-locks rev-parse --abbrev-ref HEAD', { cwd: cwd || undefined, encoding: 'utf8', stdio: ['pipe','pipe','pipe'] }).trim();
     } catch {}
 
     // Build status line (uses Nerd Font icons)
     const parts = [modelName];
     if (pct != null) parts.push('\u{1F4CA} ' + Math.floor(pct) + '%' + (ctxUsedLabel ? '(' + ctxUsedLabel + ')' : ''));
-    if (cost != null) parts.push('\u{1F4B2}' + cost.toFixed(3));
-    if (added != null || removed != null) parts.push('\u0394 +' + (added || 0) + '/-' + (removed || 0));
+    if (cost != null) parts.push('\u{1F4B2}' + cost.toFixed(3).slice(0, -1));
     if (apiMs) parts.push('\uF017 ' + fmtDur(apiMs));
     if (cacheRatio != null) parts.push('\u{F0AB0} ' + cacheRatio + '%');
     if (cwd) {

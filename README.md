@@ -7,17 +7,16 @@ Requires a [Nerd Font](https://www.nerdfonts.com/) for some icons.
 ## Screenshot
 
 ```
-Opus 4.6 📊 72%(56.0k/200k) 💲2.181 Δ +96/-30  3m39s 󰪰 99% 📂 current_dir  main
+Opus5(high) 📊 72%(56.0k/200k) 💲2.18  3m39s 󰪰 99% 📂 current_dir  main
 ```
 
 ## What it shows
 
 | Icon | Metric | Description |
 |------|--------|-------------|
-| | Model | Model name and version (e.g. `Opus 4.6`) |
+| | Model | Model name, version and reasoning effort (e.g. `Opus5(high)`, `Opus4.6(high)`) |
 | 📊 | Context | Remaining %, used/total tokens |
 | 💲 | Cost | Total session cost in USD |
-| Δ | Changes | Lines added/removed this session |
 |  | Duration | Time spent waiting for API responses |
 | 󰪰 | Cache | Prompt cache hit ratio (last request) |
 | 📂 | Folder | Current working directory name |
