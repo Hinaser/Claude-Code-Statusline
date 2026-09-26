@@ -62,35 +62,73 @@ process.stdin.on('end', () => {
     const totalInput = inputTok + cacheRead + cacheCreate;
     const cacheRatio = totalInput > 0 ? Math.round((cacheRead / totalInput) * 100) : null;
 
-    // Last API response time + cache expiry, from the transcript's last assistant entry.
+    // Walk the transcript backwards to the last user prompt.
+    // Last API response time + cache expiry, from the last assistant entry.
     // TTL: 1h if the last turn wrote to the 1h cache (or wrote nothing), 5m if it only wrote to the 5m cache.
+    // Last turn's effort: thinking/output tokens and API steps (one response spans several entries sharing
+    // a message id, so each id counts once), and wall time (turn_duration once the turn ends, else prompt → last entry).
     let cacheLabel = '';
     let cacheCold = false;
     let cacheOnly5m = false;
+    let turnLabel = '';
     try {
       const tp = d.transcript_path;
       if (tp && fs.existsSync(tp)) {
         const size = fs.statSync(tp).size;
-        const len = Math.min(size, 512 * 1024);
+        const len = Math.min(size, 2 * 1024 * 1024);
         const fd = fs.openSync(tp, 'r');
         const buf = Buffer.alloc(len);
         fs.readSync(fd, buf, 0, len, size - len);
         fs.closeSync(fd);
         const lines = buf.toString().split('\n');
+        const ids = new Set();
+        let thinkTok = 0, outTok = 0, hasThink = false, durMs = null, lastTs = null;
         for (let i = lines.length - 1; i >= 0; i--) {
           const line = lines[i];
-          if (!line.includes('\"assistant\"')) continue;
+          if (!line.includes('\"assistant\"') && !line.includes('\"user\"') && !line.includes('\"turn_duration\"')) continue;
           let e; try { e = JSON.parse(line); } catch { continue; }
-          if (e.type !== 'assistant' || !e.timestamp) continue;
-          const cc = e.message?.usage?.cache_creation;
-          const only5m = cc && (cc.ephemeral_5m_input_tokens || 0) > 0 && (cc.ephemeral_1h_input_tokens || 0) === 0;
-          const ttlMs = (only5m ? 5 : 60) * 60 * 1000;
-          const last = new Date(e.timestamp).getTime();
-          const expiry = last + ttlMs;
-          const hot = Date.now() < expiry;
-          cacheCold = !hot;
-          cacheOnly5m = only5m;
-          cacheLabel = (hot ? '\u{1F525}' : '❄️') + hhmm(last) + '→' + hhmm(expiry) + (only5m ? '(5m)' : '');
+          if (e.isSidechain || !e.timestamp) continue;
+          if (lastTs == null) lastTs = new Date(e.timestamp).getTime();
+          if (e.type === 'system' && e.subtype === 'turn_duration') {
+            if (durMs == null && !ids.size) durMs = e.durationMs;
+            continue;
+          }
+          if (e.type === 'assistant') {
+            if (!cacheLabel) {
+              const cc = e.message?.usage?.cache_creation;
+              const only5m = cc && (cc.ephemeral_5m_input_tokens || 0) > 0 && (cc.ephemeral_1h_input_tokens || 0) === 0;
+              const ttlMs = (only5m ? 5 : 60) * 60 * 1000;
+              const last = new Date(e.timestamp).getTime();
+              const expiry = last + ttlMs;
+              const hot = Date.now() < expiry;
+              cacheCold = !hot;
+              cacheOnly5m = only5m;
+              cacheLabel = (hot ? '\u{1F525}' : '❄️') + hhmm(last) + '→' + hhmm(expiry) + (only5m ? '(5m)' : '');
+            }
+            const id = e.message?.id;
+            const us = e.message?.usage;
+            if (id && us && !ids.has(id)) {
+              ids.add(id);
+              outTok += us.output_tokens || 0;
+              const t = us.output_tokens_details?.thinking_tokens;
+              if (t != null) { hasThink = true; thinkTok += t; }
+            }
+            continue;
+          }
+          // A prompt typed by the user (not a tool result, injected meta text or an interrupt marker) starts the turn
+          const c = e.message?.content;
+          const isPrompt = e.type === 'user' && !e.isMeta && !e.interruptedMessageId
+            && (typeof c === 'string' || (Array.isArray(c) && c.some(b => b.type === 'text') && !c.some(b => b.type === 'tool_result')));
+          if (!isPrompt) continue;
+          if (ids.size) {
+            const ms = durMs != null ? durMs : lastTs - new Date(e.timestamp).getTime();
+            const s = Math.max(0, Math.round(ms / 1000));
+            const dur = s < 60 ? s + 's'
+              : s < 3600 ? Math.floor(s / 60) + 'm' + String(s % 60).padStart(2, '0') + 's'
+              : Math.floor(s / 3600) + 'h' + String(Math.floor(s % 3600 / 60)).padStart(2, '0') + 'm';
+            turnLabel = '\u{1F9E0} ' + (hasThink ? fmtK(thinkTok) + '/' : '') + fmtK(outTok)
+              + ' \u{F0456} ' + ids.size + ' \u{F051B} ' + dur;
+          }
           break;
         }
       }
@@ -158,6 +196,7 @@ process.stdin.on('end', () => {
     if (branch) parts2.push(' ' + branch);
 
     if (added || removed) parts2.push('\u{1F4DD} +' + added + '/-' + removed);
+    if (turnLabel) parts2.push(turnLabel);
 
     process.stdout.write(parts.join(' ') + (parts2.length ? '\n' + parts2.join(' ') : ''));
   } catch { process.stdout.write(''); }

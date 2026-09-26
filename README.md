@@ -8,7 +8,7 @@ Requires a [Nerd Font](https://www.nerdfonts.com/) for some icons.
 
 ```
 Opus5(high) 📊 72%(56.0k/200k) 💲2.18(+0.12) 󰪰 99%(+1.2k) 🔥10:42→11:42(~$0.85) ⏳ 5h/7d: 42%/18%
-📂 current_dir  main*↑2 📝 +120/-35
+📂 current_dir  main*↑2 📝 +120/-35 🧠 1.2k/3.4k 󰑖 7 󰔛 1m10s
 ```
 
 ## What it shows
@@ -23,6 +23,7 @@ Opus5(high) 📊 72%(56.0k/200k) 💲2.18(+0.12) 󰪰 99%(+1.2k) 🔥10:42→11:
 | 📂 | Folder | Current working directory name (second line) |
 |  | Branch | Current git branch. `*` when there are uncommitted changes, `↑2`/`↓1` for commits ahead of/behind upstream |
 | 📝 | Lines | Lines added/removed in this session (`+120/-35`), shown once non-zero (second line) |
+| 🧠 | Last turn | How hard the model worked on the last prompt: thinking/output tokens, 󰑖 API steps (tool round-trips) and 󰔛 wall time. Compare turns across effort levels. Thinking tokens are left out for models that don't report them (second line) |
 | ⏳ | Plan limits | Usage of the 5-hour and weekly plan limits. Each value is red at 80% or more. Shown only when Claude Code reports them (subscription plans) |
 
 ## Setup
@@ -60,6 +61,10 @@ The status line only re-renders when the conversation updates, so an elapsed-tim
 ## How the resume cost is estimated
 
 Claude Code reports `prompt_cache.recache_tokens_if_cold` (how many tokens the next request would have to write to the cache if it has expired) and `prompt_cache.ttl`. The estimate is those tokens times the model's cache-write price: the input price ×2 for the 1-hour TTL, ×1.25 for the 5-minute TTL. Input prices are hard-coded per model family in the script (Fable $10, Opus 5.5 $4, Opus 4.5–5 $5, Sonnet 5 $2, Sonnet 4.x $3, Haiku 4.5 $1 per million tokens); unknown models show no estimate. It is shown while the cache is still hot too, since the status line doesn't re-render while you are idle: read it as "what it costs to come back after the expiry time".
+
+## How the last-turn effort is measured
+
+The transcript is read backwards to the last prompt you typed (tool results and injected text don't count). Every API response since then adds its `usage.output_tokens` and `usage.output_tokens_details.thinking_tokens`; a response is written as several entries sharing one `message.id`, so each id is counted once, and the number of ids is the step count. Wall time is the `turn_duration` Claude Code writes when the turn ends, or prompt → latest entry while it is still running. The thinking text itself isn't stored, so token counts are the only measure of depth.
 
 ## License
 
