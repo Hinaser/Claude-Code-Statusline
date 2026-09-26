@@ -34,8 +34,24 @@ process.stdin.on('end', () => {
       ? fmtK(ctxSize - Math.round(ctxSize * pct / 100)) + '/' + fmtK(ctxSize)
       : '';
 
-    // Cost
+    // Cost (+ increase since the previous cost change, persisted per session since the payload only has the total)
     const cost = d.cost?.total_cost_usd;
+    let costDelta = null;
+    try {
+      const sid = String(d.session_id || '').replace(/[^A-Za-z0-9_-]/g, '');
+      if (sid && cost != null) {
+        const sf = require('path').join(require('os').tmpdir(), 'claude-statusline-cost-' + sid + '.json');
+        let st = null;
+        try { st = JSON.parse(fs.readFileSync(sf, 'utf8')); } catch {}
+        if (st && cost === st.cost) costDelta = st.delta;
+        else {
+          // No baseline yet, or the total went down (e.g. session restarted): reset without a delta
+          if (st && cost > st.cost) costDelta = cost - st.cost;
+          fs.writeFileSync(sf, JSON.stringify({ cost, delta: costDelta }));
+        }
+      }
+    } catch {}
+    const fmtUsd = v => v >= 0.01 ? v.toFixed(3).slice(0, -1) : v.toFixed(3);
 
     // Cache hit ratio (+ tokens written to cache on the last turn)
     const u = d.context_window?.current_usage;
@@ -85,7 +101,7 @@ process.stdin.on('end', () => {
     // Build status line (uses Nerd Font icons)
     const parts = [modelName];
     if (pct != null) parts.push('\u{1F4CA} ' + Math.floor(pct) + '%' + (ctxUsedLabel ? '(' + ctxUsedLabel + ')' : ''));
-    if (cost != null) parts.push('\u{1F4B2}' + cost.toFixed(3).slice(0, -1));
+    if (cost != null) parts.push('\u{1F4B2}' + fmtUsd(cost) + (costDelta ? '(+' + fmtUsd(costDelta) + ')' : ''));
     if (cacheRatio != null) parts.push('\u{F0AB0} ' + cacheRatio + '%' + (cacheCreate ? '(+' + fmtK(cacheCreate) + ')' : ''));
     if (cacheLabel) parts.push(cacheLabel);
     if (cwd) {
