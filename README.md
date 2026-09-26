@@ -7,7 +7,7 @@ Requires a [Nerd Font](https://www.nerdfonts.com/) for some icons.
 ## Screenshot
 
 ```
-Opus5(high) 📊 72%(56.0k/200k) 💲2.18  3m39s 󰪰 99% 📂 current_dir  main
+Opus5(high) 📊 72%(56.0k/200k) 💲2.18(+0.12) 󰪰 99%(+1.2k) 🔥10:42→11:42 📂 current_dir  main
 ```
 
 ## What it shows
@@ -16,7 +16,7 @@ Opus5(high) 📊 72%(56.0k/200k) 💲2.18  3m39s 󰪰 99% 📂 current_dir �
 |------|--------|-------------|
 | | Model | Model name, version and reasoning effort (e.g. `Opus5(high)`, `Opus4.6(high)`) |
 | 📊 | Context | Remaining %, used/total tokens |
-| 💲 | Cost | Total session cost in USD |
+| 💲 | Cost | Total session cost in USD, and how much it rose at the last change (`+0.12`). The previous total is kept per session in a small file in the OS temp directory, since the status line payload only carries the running total |
 | 󰪰 | Cache | Prompt cache hit ratio of the last request, and tokens written to the cache by it (`+12.7k`) |
 | 🔥/❄️ | Cache TTL | Time of the last API response → when its prompt cache expires. 🔥 while still hot, ❄️ once expired. `(5m)` is appended when the last request only wrote to the 5-minute cache |
 | 📂 | Folder | Current working directory name |
