@@ -64,7 +64,7 @@ Claude Code reports `prompt_cache.recache_tokens_if_cold` (how many tokens the n
 
 ## How the last-turn effort is measured
 
-The transcript is read backwards to the last prompt you typed (tool results and injected text don't count). Every API response since then adds its `usage.output_tokens` and `usage.output_tokens_details.thinking_tokens`; a response is written as several entries sharing one `message.id`, so each id is counted once, and the number of ids is the step count. Wall time is the `turn_duration` Claude Code writes when the turn ends, or prompt → latest entry while it is still running. The thinking text itself isn't stored, so token counts are the only measure of depth.
+The transcript is read backwards to the start of the last turn: a prompt you typed, or a background-task notification that woke the model up (tool results, interrupts, slash commands and compact summaries don't count). Every API response since then adds its `usage.output_tokens` and `usage.output_tokens_details.thinking_tokens`; a response is written as several entries sharing one `message.id`, so each id is counted once, and the number of ids is the step count. Wall time is the `turn_duration` Claude Code writes when the turn ends, or prompt → latest entry while it is still running. The thinking text itself isn't stored, so token counts are the only measure of depth.
 
 ## License
 
