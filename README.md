@@ -7,8 +7,8 @@ Requires a [Nerd Font](https://www.nerdfonts.com/) for some icons.
 ## Screenshot
 
 ```
-Opus5(high) 📊 72%(56.0k/200k) 💲2.18(+0.12) 󰪰 99%(+1.2k) 🔥10:42→11:42(~$0.85)
-📂 current_dir  main*↑2 +120/-35 ⏳5h 42% 7d 18%
+Opus5(high) 📊 72%(56.0k/200k) 💲2.18(+0.12) 󰪰 99%(+1.2k) 🔥10:42→11:42(~$0.85) ⏳5h 42% 7d 18%
+📂 current_dir  main*↑2 📝+120/-35
 ```
 
 ## What it shows
@@ -22,7 +22,7 @@ Opus5(high) 📊 72%(56.0k/200k) 💲2.18(+0.12) 󰪰 99%(+1.2k) 🔥10:42→11:
 | 🔥/❄️ | Cache TTL | Time of the last API response → when its prompt cache expires. 🔥 while still hot, ❄️ (red) once expired. `(5m)` is appended when the last request only wrote to the 5-minute cache. `(~$0.85)` is the estimated cost of the first request after expiry, which has to rewrite the whole cache |
 | 📂 | Folder | Current working directory name (second line) |
 |  | Branch | Current git branch. `*` when there are uncommitted changes, `↑2`/`↓1` for commits ahead of/behind upstream |
-| | Lines | Lines added/removed in this session (`+120/-35`), shown once non-zero |
+| 📝 | Lines | Lines added/removed in this session (`+120/-35`), shown once non-zero (second line) |
 | ⏳ | Plan limits | Usage of the 5-hour and weekly plan limits. Red at 80% or more. Shown only when Claude Code reports them (subscription plans) |
 
 ## Setup

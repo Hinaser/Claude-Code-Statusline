@@ -138,7 +138,7 @@ process.stdin.on('end', () => {
     const limits = [limit('five_hour', '5h'), limit('seven_day', '7d')].filter(Boolean).join(' ');
 
     // Build status line (uses Nerd Font icons)
-    // Line 1: what decides spending (context, cost, cache). Line 2: where you are and what changed.
+    // Line 1: what decides spending (context, cost, cache, plan limits). Line 2: where you are and what changed.
     const parts = [modelName];
     if (pct != null) {
       const ctx = '\u{1F4CA} ' + Math.floor(pct) + '%' + (ctxUsedLabel ? '(' + ctxUsedLabel + ')' : '');
@@ -150,6 +150,7 @@ process.stdin.on('end', () => {
       const c = cacheLabel + (resumeCost != null ? '(~\$' + fmtUsd(resumeCost) + ')' : '');
       parts.push(cacheCold ? red(c) : c);
     }
+    if (limits) parts.push('\u23F3' + limits);
     const parts2 = [];
     if (cwd) {
       const segs = cwd.replace(/\\\\/g, '/').split('/');
@@ -157,8 +158,7 @@ process.stdin.on('end', () => {
     }
     if (branch) parts2.push(' ' + branch);
 
-    if (added || removed) parts2.push('+' + added + '/-' + removed);
-    if (limits) parts2.push('\u23F3' + limits);
+    if (added || removed) parts2.push('\u{1F4DD}+' + added + '/-' + removed);
 
     process.stdout.write(parts.join(' ') + (parts2.length ? '\n' + parts2.join(' ') : ''));
   } catch { process.stdout.write(''); }
