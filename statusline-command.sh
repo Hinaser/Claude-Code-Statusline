@@ -126,16 +126,18 @@ process.stdin.on('end', () => {
       if (head) branch = head + (dirty ? '*' : '') + (ahead ? '↑' + ahead : '') + (behind ? '↓' + behind : '');
     } catch {}
 
-    // Lines changed this session, and plan usage limits (red at 80% or more)
+    // Lines changed this session, and plan usage limits as 5-cell gauges (red at 80% or more)
     const added = d.cost?.total_lines_added || 0;
     const removed = d.cost?.total_lines_removed || 0;
     const limit = (k, label) => {
-      const p = d.rate_limits?.[k]?.used_percentage;
-      if (p == null) return '';
-      const s = label + ' ' + Math.round(p) + '%';
+      const raw = d.rate_limits?.[k]?.used_percentage;
+      if (raw == null) return '';
+      const p = Math.round(raw);
+      const cells = p > 0 ? Math.min(5, Math.max(1, Math.round(p / 20))) : 0;
+      const s = label + ' ' + '▰'.repeat(cells) + '▱'.repeat(5 - cells) + ' ' + p + '%';
       return p >= 80 ? red(s) : s;
     };
-    const limits = [limit('five_hour', '5h'), limit('seven_day', '7d')].filter(Boolean).join(' ');
+    const limits = [limit('five_hour', '5h'), limit('seven_day', '7d')].filter(Boolean).join('  ');
 
     // Build status line (uses Nerd Font icons)
     // Line 1: what decides spending (context, cost, cache, plan limits). Line 2: where you are and what changed.
@@ -150,7 +152,7 @@ process.stdin.on('end', () => {
       const c = cacheLabel + (resumeCost != null ? '(~\$' + fmtUsd(resumeCost) + ')' : '');
       parts.push(cacheCold ? red(c) : c);
     }
-    if (limits) parts.push('\u23F3' + limits);
+    if (limits) parts.push('\u23F3 ' + limits);
     const parts2 = [];
     if (cwd) {
       const segs = cwd.replace(/\\\\/g, '/').split('/');
@@ -158,7 +160,7 @@ process.stdin.on('end', () => {
     }
     if (branch) parts2.push(' ' + branch);
 
-    if (added || removed) parts2.push('\u{1F4DD}+' + added + '/-' + removed);
+    if (added || removed) parts2.push('\u{1F4DD} +' + added + '/-' + removed);
 
     process.stdout.write(parts.join(' ') + (parts2.length ? '\n' + parts2.join(' ') : ''));
   } catch { process.stdout.write(''); }
