@@ -126,18 +126,15 @@ process.stdin.on('end', () => {
       if (head) branch = head + (dirty ? '*' : '') + (ahead ? '↑' + ahead : '') + (behind ? '↓' + behind : '');
     } catch {}
 
-    // Lines changed this session, and plan usage limits as 5-cell gauges (red at 80% or more)
+    // Lines changed this session, and plan usage limits as '5h/7d: 4%/81%' (each value red at 80% or more)
     const added = d.cost?.total_lines_added || 0;
     const removed = d.cost?.total_lines_removed || 0;
-    const limit = (k, label) => {
-      const raw = d.rate_limits?.[k]?.used_percentage;
-      if (raw == null) return '';
-      const p = Math.round(raw);
-      const cells = p > 0 ? Math.min(5, Math.max(1, Math.round(p / 20))) : 0;
-      const s = label + ' ' + '▰'.repeat(cells) + '▱'.repeat(5 - cells) + ' ' + p + '%';
-      return p >= 80 ? red(s) : s;
-    };
-    const limits = [limit('five_hour', '5h'), limit('seven_day', '7d')].filter(Boolean).join('  ');
+    const lims = [['five_hour', '5h'], ['seven_day', '7d']]
+      .filter(([k]) => d.rate_limits?.[k]?.used_percentage != null)
+      .map(([k, label]) => [label, Math.round(d.rate_limits[k].used_percentage)]);
+    const limits = lims.length
+      ? lims.map(([label]) => label).join('/') + ': ' + lims.map(([, p]) => p >= 80 ? red(p + '%') : p + '%').join('/')
+      : '';
 
     // Build status line (uses Nerd Font icons)
     // Line 1: what decides spending (context, cost, cache, plan limits). Line 2: where you are and what changed.
