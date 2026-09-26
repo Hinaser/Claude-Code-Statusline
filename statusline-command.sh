@@ -82,7 +82,7 @@ process.stdin.on('end', () => {
         fs.closeSync(fd);
         const lines = buf.toString().split('\n');
         const ids = new Set();
-        let thinkTok = 0, outTok = 0, hasThink = false, durMs = null, lastTs = null;
+        let thinkTok = 0, outTok = 0, hasThink = false, durMs = null, lastTs = null, turnDone = false;
         for (let i = lines.length - 1; i >= 0; i--) {
           const line = lines[i];
           if (!line.includes('\"assistant\"') && !line.includes('\"user\"') && !line.includes('\"turn_duration\"')) continue;
@@ -90,7 +90,7 @@ process.stdin.on('end', () => {
           if (e.isSidechain || !e.timestamp) continue;
           if (lastTs == null) lastTs = new Date(e.timestamp).getTime();
           if (e.type === 'system' && e.subtype === 'turn_duration') {
-            if (durMs == null && !ids.size) durMs = e.durationMs;
+            if (!turnDone && durMs == null && !ids.size) durMs = e.durationMs;
             continue;
           }
           if (e.type === 'assistant') {
@@ -105,6 +105,7 @@ process.stdin.on('end', () => {
               cacheOnly5m = only5m;
               cacheLabel = (hot ? '\u{1F525}' : '❄️') + hhmm(last) + '→' + hhmm(expiry) + (only5m ? '(5m)' : '');
             }
+            if (turnDone) break;
             const id = e.message?.id;
             const us = e.message?.usage;
             if (id && us && !ids.has(id)) {
@@ -115,11 +116,10 @@ process.stdin.on('end', () => {
             }
             continue;
           }
-          // A prompt typed by the user (not a tool result, injected meta text or an interrupt marker) starts the turn
-          const c = e.message?.content;
-          const isPrompt = e.type === 'user' && !e.isMeta && !e.interruptedMessageId
-            && (typeof c === 'string' || (Array.isArray(c) && c.some(b => b.type === 'text') && !c.some(b => b.type === 'tool_result')));
-          if (!isPrompt) continue;
+          // A turn starts at a prompt (typed, SDK or a background-task notification): only those carry origin/promptSource.
+          // Tool results, interrupts, slash commands and their output, and compact summaries don't.
+          if (turnDone || e.type !== 'user' || e.isMeta || !(e.origin || e.promptSource)) continue;
+          turnDone = true;
           if (ids.size) {
             const ms = durMs != null ? durMs : lastTs - new Date(e.timestamp).getTime();
             const s = Math.max(0, Math.round(ms / 1000));
@@ -129,7 +129,8 @@ process.stdin.on('end', () => {
             turnLabel = '\u{1F9E0} ' + (hasThink ? fmtK(thinkTok) + '/' : '') + fmtK(outTok)
               + ' \u{F0456} ' + ids.size + ' \u{F051B} ' + dur;
           }
-          break;
+          // Keep walking only to find the previous response for the cache label (a new prompt has none yet)
+          if (cacheLabel) break;
         }
       }
     } catch {}
